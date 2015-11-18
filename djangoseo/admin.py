@@ -5,10 +5,13 @@ from django.contrib import admin
 from django.contrib.contenttypes.forms import BaseGenericInlineFormSet
 from django.contrib.contenttypes.admin import GenericStackedInline
 from django.contrib.contenttypes.models import ContentType
-from django.utils.encoding import smart_unicode
 from django.forms.models import fields_for_model
 from django.utils.translation import ugettext_lazy as _
 from django.utils.text import capfirst
+try:
+    from django.utils.encoding import smart_unicode
+except ImportError:
+    from django.utils.encoding import smart_text as smart_unicode
 
 from djangoseo.utils import get_seo_content_types
 from djangoseo.systemviews import get_seo_views
@@ -89,28 +92,32 @@ def register_seo_admin(admin_site, metadata_class):
             form = get_model_form(metadata_class)
             list_display = model_admin.list_display + get_list_display()
 
-        _register_admin(admin_site, metadata_class._meta.get_model('model'), ModelAdmin)
+        _register_admin(
+            admin_site, metadata_class._meta.get_model('model'), ModelAdmin)
 
     if 'view' in backends:
         class ViewAdmin(view_admin):
             form = get_view_form(metadata_class)
             list_display = view_admin.list_display + get_list_display()
 
-        _register_admin(admin_site, metadata_class._meta.get_model('view'), ViewAdmin)
+        _register_admin(
+            admin_site, metadata_class._meta.get_model('view'), ViewAdmin)
 
     if 'path' in backends:
         class PathAdmin(path_admin):
             form = get_path_form(metadata_class)
             list_display = path_admin.list_display + get_list_display()
 
-        _register_admin(admin_site, metadata_class._meta.get_model('path'), PathAdmin)
+        _register_admin(
+            admin_site, metadata_class._meta.get_model('path'), PathAdmin)
 
     if 'modelinstance' in backends:
         class ModelInstanceAdmin(model_instance_admin):
             form = get_modelinstance_form(metadata_class)
             list_display = model_instance_admin.list_display + get_list_display()
 
-        _register_admin(admin_site, metadata_class._meta.get_model('modelinstance'), ModelInstanceAdmin)
+        _register_admin(admin_site, metadata_class._meta.get_model(
+            'modelinstance'), ModelInstanceAdmin)
 
 
 def _register_admin(admin_site, model, admin_class):
@@ -125,6 +132,7 @@ def _register_admin(admin_site, model, admin_class):
 
 
 class MetadataFormset(BaseGenericInlineFormSet):
+
     def _construct_form(self, i, **kwargs):
         """ Override the method to change the form attribute empty_permitted """
         form = super(MetadataFormset, self)._construct_form(i, **kwargs)
@@ -136,7 +144,8 @@ class MetadataFormset(BaseGenericInlineFormSet):
         form.has_changed = lambda: True
 
         # Set a marker on this object to prevent automatic metadata creation
-        # This is seen by the post_save handler, which then skips this instance.
+        # This is seen by the post_save handler, which then skips this
+        # instance.
         if self.instance:
             self.instance.__seo_metadata_handled = True
 
@@ -193,7 +202,8 @@ def get_modelinstance_form(metadata_class):
     content_types = get_seo_content_types(metadata_class._meta.seo_models)
 
     # Get a list of fields, with _content_type at the start
-    important_fields = ['_content_type'] + ['_object_id'] + core_choice_fields(metadata_class)
+    important_fields = ['_content_type'] + \
+        ['_object_id'] + core_choice_fields(metadata_class)
     _fields = important_fields + fields_for_model(model_class,
                                                   exclude=important_fields).keys()
 
@@ -222,6 +232,7 @@ def get_path_form(metadata_class):
                                                   exclude=important_fields).keys()
 
     class ModelMetadataForm(forms.ModelForm):
+
         class Meta:
             model = model_class
             fields = _fields
@@ -233,7 +244,8 @@ def get_view_form(metadata_class):
     model_class = metadata_class._meta.get_model('view')
 
     # Restrict content type choices to the models set in seo_models
-    view_choices = [(key, " ".join(key.split("_"))) for key in get_seo_views(metadata_class)]
+    view_choices = [(key, " ".join(key.split("_")))
+                    for key in get_seo_views(metadata_class)]
     view_choices.insert(0, ("", "---------"))
 
     # Get a list of fields, with _view at the start
@@ -268,8 +280,10 @@ def _monkey_inline(model, admin_class_instance, metadata_class, inline_class, ad
     """ Monkey patch the inline onto the given admin_class instance. """
     if model in metadata_class._meta.seo_models:
         # *Not* adding to the class attribute "inlines", as this will affect
-        # all instances from this class. Explicitly adding to instance attribute.
-        admin_class_instance.__dict__['inlines'] = admin_class_instance.inlines + [inline_class]
+        # all instances from this class. Explicitly adding to instance
+        # attribute.
+        admin_class_instance.__dict__[
+            'inlines'] = admin_class_instance.inlines + [inline_class]
 
         # Because we've missed the registration, we need to perform actions
         # that were done then (on admin class instantiation)
@@ -298,9 +312,11 @@ def auto_register_inlines(admin_site, metadata_class):
     inline_class = get_inline(metadata_class)
 
     for model, admin_class_instance in admin_site._registry.items():
-        _monkey_inline(model, admin_class_instance, metadata_class, inline_class, admin_site)
+        _monkey_inline(model, admin_class_instance,
+                       metadata_class, inline_class, admin_site)
 
     # Monkey patch the register method to automatically add an inline for this site.
     # _with_inline() is a decorator that wraps the register function with the same injection code
     # used above (_monkey_inline).
-    admin_site.register = _with_inline(admin_site.register, admin_site, metadata_class, inline_class)
+    admin_site.register = _with_inline(
+        admin_site.register, admin_site, metadata_class, inline_class)

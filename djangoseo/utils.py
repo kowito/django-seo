@@ -12,6 +12,7 @@ from django.core.urlresolvers import RegexURLResolver, RegexURLPattern, Resolver
 
 class NotSet(object):
     """ A singleton to identify unset values (where None would have meaning) """
+
     def __str__(self):
         return "NotSet"
 
@@ -24,6 +25,7 @@ NotSet = NotSet()
 
 class Literal(object):
     """ Wrap literal values so that the system knows to treat them that way """
+
     def __init__(self, value):
         self.value = value
 
@@ -37,7 +39,8 @@ def _pattern_resolve_to_name(pattern, path):
         elif hasattr(pattern, '_callback_str'):
             name = pattern._callback_str
         else:
-            name = "%s.%s" % (pattern.callback.__module__, pattern.callback.func_name)
+            name = "%s.%s" % (pattern.callback.__module__,
+                              pattern.callback.func_name)
         return name
 
 
@@ -52,13 +55,14 @@ def _resolver_resolve_to_name(resolver, path):
                     name = _pattern_resolve_to_name(pattern, new_path)
                 elif isinstance(pattern, RegexURLResolver):
                     name = _resolver_resolve_to_name(pattern, new_path)
-            except Resolver404, e:
-                tried.extend([(pattern.regex.pattern + '   ' + t) for t in e.args[0]['tried']])
+            except Resolver404 as e:
+                tried.extend([(pattern.regex.pattern + '   ' + t)
+                              for t in e.args[0]['tried']])
             else:
                 if name:
                     return name
                 tried.append(pattern.regex.pattern)
-        raise Resolver404, {'tried': tried, 'path': new_path}
+        raise Resolver404({'tried': tried, 'path': new_path})
 
 
 def resolve_to_name(path, urlconf=None):
@@ -75,7 +79,7 @@ def _replace_quot(match):
 
 def escape_tags(value, valid_tags):
     """ Strips text from the given html string, leaving only tags.
-        This functionality requires BeautifulSoup, nothing will be 
+        This functionality requires BeautifulSoup, nothing will be
         done otherwise.
 
         This isn't perfect. Someone could put javascript in here:
@@ -102,7 +106,7 @@ def escape_tags(value, valid_tags):
 
     # Allow comments to be hidden
     value = value.replace("&lt;!--", "<!--").replace("--&gt;", "-->")
-    
+
     return mark_safe(value)
 
 
@@ -112,7 +116,7 @@ def _get_seo_content_types(seo_models):
     """
     try:
         return [ContentType.objects.get_for_model(m).id for m in seo_models]
-    except: # previously caught DatabaseError
+    except:  # previously caught DatabaseError
         # Return an empty list if this is called too early
         return []
 
